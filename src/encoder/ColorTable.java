@@ -7,27 +7,32 @@ public class ColorTable {
 
 	final int colorTableSize = 256;
 	private ColorTableEntry[] table = new ColorTableEntry[colorTableSize];
-	private int[] medians;
-	private int[] colorIndices;
 	private int[][] imageData;
+	private int[][] imageIndices;
+	private int imageRowCount;
+	private int imageColCount;
+	
 	
 	final int blueIndex = 0;
 	final int greenIndex = 1;
 	final int redIndex = 2;
 	
 	public ColorTable(Mat image) {
-		imageData = new int[image.rows()*image.cols()][3];
+		imageData = new int[image.rows()*image.cols()][5];
+		imageIndices = new int[image.rows()][image.cols()];
+		imageRowCount = image.rows();
+		imageColCount = image.cols();
 		int index = 0;
 		for (int i = 0; i < image.rows(); i++) {
 			for (int j = 0; j < image.cols(); j++) {
 				imageData[index][0] = (int) image.get(i, j)[blueIndex];
 				imageData[index][1] = (int) image.get(i, j)[greenIndex];
 				imageData[index][2] = (int) image.get(i, j)[redIndex];
+				imageData[index][3] = i;
+				imageData[index][4] = j;
 				index++;
 			}
 		}
-		medians = new int[1 << 9];
-		colorIndices = new int [1 << 9];
 		constructColorTable();
 	}
 	
@@ -41,40 +46,17 @@ public class ColorTable {
 		return rawData;
 	}
 	
-	public int getColorIndex(double[] color) {
-		if (color.length != 3) { 
-			return 0; // something is wrong
-		}
-		
-		
-		// find the color with the smallest distance
-		int min = 255*255 + 255*255 + 255*255;
-		int minIndex = 0;
+	public int[] getImageIndices() {
+		int[] data = new int[imageRowCount*imageColCount];
 		int index = 0;
-		do {
-			int dist = ((int)table[index].red - (int)color[2])*((int)table[index].red - (int)color[2]) + ((int)table[index].green - (int)color[1])*((int)table[index].green - (int)color[1]) + ((int)table[index].blue - (int)color[0])*((int)table[index].blue - (int)color[0]);
-			if (dist < min) {
-				minIndex = index;
-				min = dist;
+		for (int i = 0; i < imageRowCount; i++) {
+			for (int j = 0; j < imageColCount; j++) {
+				data[index++] = imageIndices[i][j];
 			}
-		} while (++index < colorTableSize);
-		return minIndex;
-		
-		/*
-		int index = 1;
-		int level = 0;
-		while (level < 8) {
-			int median = medians[index];
-			int colorIndex = colorIndices[index];
-			int colorToBeTested = (int) color[colorIndex];
-			index *= 2;
-			if (colorToBeTested > median) {
-				index++;
-			}
-			level++;
 		}
-		return index&0xFF;*/
+		return data;
 	}
+	
 	
 	private void constructColorTable() {
 		computeMedians(0, 1, 0, imageData.length-1);
@@ -85,14 +67,12 @@ public class ColorTable {
 		
 		// sort
 		int colorIndex = findTheMostScatteredColor(dataStart, dataEnd);
-		colorIndices[medianNodeIndex] = colorIndex;
 		quicksort(dataStart, dataEnd, colorIndex);
 		
 		// assign new median
 		int medianIndex = (dataStart+dataEnd)/2;
 		while (++medianIndex <= dataEnd && imageData[medianIndex][colorIndex] == imageData[(dataStart+dataEnd)/2][colorIndex]);
 		medianIndex = medianIndex - 1;
-		medians[medianNodeIndex] = imageData[medianIndex][colorIndex];
 		
 		// compute the next bit
 		if (numberOfAssignedBits < 7) {
@@ -100,6 +80,16 @@ public class ColorTable {
 			computeMedians(numberOfAssignedBits+1, medianNodeIndex*2+1, medianIndex+1, dataEnd);
 		} else {
 			// fill the table
+			
+			int path = medianNodeIndex & 0x7F;
+			
+			for (int i = dataStart; i <= medianIndex; i++) {
+				imageIndices[imageData[i][3]][imageData[i][4]] = path*2;
+			}
+			for (int i = medianIndex+1; i <= dataEnd; i++) {
+				imageIndices[imageData[i][3]][imageData[i][4]] = path*2+1;
+			}
+			
 			
 			int greenSmall, greenLarge, redSmall, redLarge, blueSmall, blueLarge;
 			
@@ -152,7 +142,6 @@ public class ColorTable {
 			}
 			
 			
-			int path = medianNodeIndex & 0x7F;
 			table[path*2] = new ColorTableEntry((byte)redSmall, (byte)greenSmall, (byte)blueSmall);
 			table[path*2+1] = new ColorTableEntry((byte)redLarge, (byte)greenLarge, (byte)blueLarge);
 				

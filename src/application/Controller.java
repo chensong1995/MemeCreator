@@ -202,7 +202,7 @@ public class Controller {
 					double framePerSecond = capture.get(Videoio.CAP_PROP_FPS);
 					double percentageOfFramesToBeSkipped = rangeSlider.getLowValue() / rangeSlider.getMax();
 					double numberOfFramesToBeSkipped = totalFrameCount * percentageOfFramesToBeSkipped;
-					final double samplePerSecond = 15;
+					final double samplePerSecond = framePerSecond/2;
 					final double sampleRate = framePerSecond / samplePerSecond - 1;
 					int numberOfFramesToBeSampled = (int) Math.round((rangeSlider.getHighValue() - rangeSlider.getLowValue()) / rangeSlider.getMax() * totalFrameCount * samplePerSecond / framePerSecond);
 					
@@ -276,6 +276,7 @@ public class Controller {
 			Imgproc.putText(image, text, position, Core.FONT_HERSHEY_PLAIN, fontSize, color, fontSize);
 		}
 	}
+	
 	protected void reduceImageResolution(Mat[] images) {
 		Size reducedSize;
 		if (fullRadioButton.isSelected()) {

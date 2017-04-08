@@ -27,7 +27,7 @@ public class GIFEncoder {
 		writeHeader();
 		writeScreenDescriptor();
 		for (Mat image : originalImages) {
-			writeGraphicsControlExtension(delayInMilliSeconds);
+			writeGraphicsControlExtension(delayInMilliSeconds); // 89a
 			writeImageDescriptor(image);
 			ColorTable colorTable = new ColorTable(image);
 			writeColorTable(colorTable);
@@ -109,14 +109,7 @@ public class GIFEncoder {
 	
 	private void writeImageData(Mat image, ColorTable colorTable) {
 		// first generate the uncompressed image data
-		int[] uncompressedData = new int[image.rows()*image.cols()];
-		int offset = 0;
-		for (int i = 0; i < image.rows(); i++) {
-			for (int j = 0; j < image.cols(); j++) {
-				double[] color = image.get(i, j);
-				uncompressedData[offset++] = colorTable.getColorIndex(color);
-			}
-		}
+		int[] uncompressedData = colorTable.getImageIndices();
 		
 		// next we do the LZW compression
 		byte[] compressedData = compressImageData(uncompressedData);
